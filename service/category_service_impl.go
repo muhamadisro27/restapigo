@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"database/sql"
+	"main/exception"
 	"main/helper"
 	"main/model/domain"
 	"main/model/web"
 	"main/repository"
-  "github.com/go-playground/validator"
+
+	"github.com/go-playground/validator"
 )
 
 type CategoryServiceImpl struct {
@@ -16,9 +18,17 @@ type CategoryServiceImpl struct {
   Validate  *validator.Validate
 }
 
+func NewCategoryService(categoryRepository repository.CategoryRepository, DB *sql.DB, validate *validator.Validate) CategoryService {
+  return &CategoryServiceImpl {
+    CategoryRepository: categoryRepository,
+    DB : DB,
+    Validate : validate,
+  }
+}
+
 func (service *CategoryServiceImpl) Create(ctx context.Context, request web.CategoryCreateRequest) web.CategoryResponse {
 
-  err := service.Validate(request)
+  err := service.Validate.Struct(request)
   helper.PanicIfError(err)
   
 	tx, err := service.DB.Begin()
@@ -37,11 +47,14 @@ func (service *CategoryServiceImpl) Create(ctx context.Context, request web.Cate
 
 func (service *CategoryServiceImpl) Update(ctx context.Context, request web.CategoryUpdateRequest) web.CategoryResponse {
 
-  err := service.Validate(request)
+  err := service.Validate.Struct(request)
   helper.PanicIfError(err)
   
 	tx, err := service.DB.Begin()
-	helper.PanicIfError(err)
+
+  if err != nil {
+    panic(exception.NewNotFoundError(err.Error()))
+  }
 
 	defer helper.CommitOrRollback(tx)
 
@@ -62,7 +75,9 @@ func (service *CategoryServiceImpl) Delete(ctx context.Context, categoryId int) 
 	defer helper.CommitOrRollback(tx)
 
 	category, err := service.CategoryRepository.FindById(ctx, tx, categoryId)
-	helper.PanicIfError(err)
+	if err != nil {
+    panic(exception.NewNotFoundError(err.Error()))
+  }
 
 	service.CategoryRepository.Delete(ctx, tx, category)
 }
