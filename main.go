@@ -5,6 +5,7 @@ import (
 	"main/controller"
 	"main/exception"
 	"main/helper"
+	"main/middleware"
 	"main/repository"
 	"main/service"
 	"net/http"
@@ -35,7 +36,7 @@ func main() {
 
 	server := http.Server{
 		Addr:    "localhost:4000",
-		Handler: router,
+		Handler: middleware.NewAuthMiddleware(router),
 	}
 
 	err := server.ListenAndServe()
